@@ -60,7 +60,7 @@ def initializedb():
         credsID INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL UNIQUE,
         Username TEXT,
         Password TEXT,
-        Hash TEXT);"""
+        IS_Hash TEXT);"""
 
   create_c2server = """CREATE TABLE C2Server (
         ID INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL UNIQUE,
@@ -92,7 +92,7 @@ def initializedb():
   create_history = """CREATE TABLE History (
         ID INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL UNIQUE,
         Command TEXT);"""
-
+  
   conn = sqlite3.connect(Database)
   c = conn.cursor()
 
@@ -249,6 +249,29 @@ def get_implantdetails(randomuri):
     return result
   else:
     return None
+
+def get_allcreds():
+  conn = sqlite3.connect(Database)
+  conn.row_factory = sqlite3.Row
+  c = conn.cursor()
+  c.execute("SELECT * FROM Creds")
+  return c.fetchall()
+
+def get_creds_for_user(user):
+  conn = sqlite3.connect(Database)
+  conn.row_factory = sqlite3.Row
+  c = conn.cursor()
+  c.execute("SELECT * FROM Creds WHERE Username=?", (user,))
+  return c.fetchall()
+  
+def insert_cred(user, password, is_hash):
+  conn = sqlite3.connect(Database)
+  conn.row_factory = sqlite3.Row
+  c = conn.cursor()
+  c.execute("SELECT * FROM Creds WHERE Username=? AND Password=? AND Is_Hash=?", (user, password, is_hash))
+  if not c.fetchone():
+    c.execute("INSERT INTO Creds (Username, Password, Is_Hash) VALUES (?, ?, ?)", (user, password, is_hash))
+    conn.commit()
 
 def get_hostdetails(implant_id):
   conn = sqlite3.connect(Database)

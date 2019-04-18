@@ -401,7 +401,7 @@ turnon-notifications
 turnoff-notifications
 listmodules
 pwnself (alias: p)
-creds -action <dump/add/del/search> -username <username> -password/-hash
+creds -action <dump/add/del/search> -username <username> -password/-hash <password/hash>
 createnewpayload
 createproxypayload
 createdaisypayload

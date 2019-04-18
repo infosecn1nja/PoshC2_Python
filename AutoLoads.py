@@ -103,7 +103,6 @@ def run_autoloads(command, randomuri, user):
   if "set-lhstokenprivilege" in command.lower(): check_module_loaded("Set-LHSTokenPrivilege.ps1", randomuri, user)
   if "sharpsocks" in command.lower(): check_module_loaded("SharpSocks.ps1", randomuri, user)
   if "find-allvulns" in command.lower(): check_module_loaded("Sherlock.ps1", randomuri, user)
-  if "test-adcredential" in command.lower(): check_module_loaded("Test-ADCredential.ps1", randomuri, user)
   if "new-zipfile" in command.lower(): check_module_loaded("Zippy.ps1", randomuri, user)
   if "get-netuser" in command.lower(): check_module_loaded("powerview.ps1", randomuri, user)
   if "invoke-aclscanner" in command.lower(): check_module_loaded("powerview.ps1", randomuri, user)
