@@ -19,10 +19,10 @@ def newTask(path):
           user_command = command
           hostinfo = DB.get_hostinfo(RandomURI)
           now = datetime.datetime.now()
-          if (command.lower().startswith("$shellcode64")) or (command.lower().startswith("$shellcode86") or command.lower().startswith("run-exe core.program core inject-shellcode")) :
+          if (command.startswith("$shellcode64")) or (command.startswith("$shellcode86") or command.startswith("run-exe core.program core inject-shellcode")) :
            user_command = "Inject Shellcode: %s" % command[command.index("#") + 1:]
            command = command[:command.index("#")]
-          elif (command.lower().startswith('upload-file')):
+          elif (command.startswith('upload-file')):
             filepath = command.replace('upload-file', '')
             if ";" in filepath:
               filepath = filepath.split(";")[1].strip()
