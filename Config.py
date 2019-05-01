@@ -5,9 +5,11 @@ from UrlConfig import UrlConfig
 HOST_NAME = '0.0.0.0'
 PORT_NUMBER = 443 # This is the bind port
 
+SYSTEM_PROFILER = "/in"
+SYSTEM_PROFILER_REDIRECT = "https://linkedin.com"
 POSHDIR = "/opt/PoshC2_Python/"
 ROOTDIR = "/opt/PoshC2_Project/"
-HostnameIP = "https://193.36.15.234"
+HostnameIP = "https://192.36.15.234"
 DomainFrontHeader = "" # example df.azureedge.net
 DefaultSleep = "5s"
 Jitter = 0.20

